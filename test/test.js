@@ -62,6 +62,34 @@ describe('Loopback softDelete mixin', () => {
           assert.isDefined(deletedBook.deletedAt);
         });
     });
+
+    it('allows to include deleted instances in count queries', () => {
+      const Book = dataSource.createModel(
+        'count_query',
+        { id: { type: Number, generated: false, id: true }, name: String, type: String },
+        { mixins: { SoftDelete: true } }
+      );
+
+      const booksCreated = [
+        Book.create({ id: 1, name: 'book 1', type: 'fiction'}),
+        Book.create({ id: 2, name: 'book 2', type: 'fiction'}),
+        Book.create({ id: 3, name: 'book 3', type: 'non-fiction'}),
+      ];
+
+      return Promise.all(booksCreated)
+        .then(() => Book.destroyAll({ type: 'non-fiction' }))
+        .then(() => {
+          return Promise.all([
+            Book.count({deleted: true})
+              .then(booksCount => {
+                assert.equal(booksCount, 3);
+              }),
+            Book.count().then(booksCount => {
+              assert.equal(booksCount, 2);
+            })
+          ]);
+        });
+    });
   });
 
   describe('destroyAll', () => {
